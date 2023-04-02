@@ -38,14 +38,12 @@ def lambda_handler(event, context):
         else:
             if order_response.status_code == 200:
                 order_data = order_response.json()
-                print(order_data)
                 if "orders" in order_data:
                     order = order_data["orders"][0]
                     print("Processing order")
 
                     has_lawn_plan = any(isLawnPlan(item["sku"]) for item in order["items"])
                     if has_lawn_plan:
-                        print("This order has a lawn plan")
                         url_mlp = f"https://user-api-dev-qhw6i22s2q-uc.a.run.app/order?shopify_order_no={order['orderNumber']}"
                         response_mlp = requests.get(url_mlp)
                         data_mlp = response_mlp.json()
@@ -56,7 +54,6 @@ def lambda_handler(event, context):
                                     'name': product['name'],
                                     'count': product['count']
                                 }
-                        print(mlp_data[detail['sku']])
                     process_items_and_update_order(order)
                         
                 else:
@@ -120,7 +117,6 @@ def update_order(order):
         "Content-Type": "application/json",
         "Authorization": f"Basic {encoded_auth_string}"
     }
-    print(json.dumps(order))
     try:
         response = requests.post(url, headers=headers, data=json.dumps(order))
         print(f"Response status code: {response.status_code}")
