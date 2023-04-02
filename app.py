@@ -14,6 +14,9 @@ headers = {
     "Authorization": f"Basic {encoded_auth_string}"
 }
 
+session = requests.Session()
+session.headers.update(headers)
+
 mlp_data = {}  # Define as a global variable
 
 def lambda_handler(event, context):
@@ -30,7 +33,7 @@ def lambda_handler(event, context):
         print(f"Fetching data from resource_url: {resource_url}")
 
         try:
-            order_response = requests.get(resource_url, headers=headers)
+            order_response = session.get(resource_url)
         except requests.exceptions.RequestException as e:
             print(f"Error fetching data from resource_url: {e}")
             response["statusCode"] = 500
@@ -45,7 +48,7 @@ def lambda_handler(event, context):
                     has_lawn_plan = any(isLawnPlan(item["sku"]) for item in order["items"])
                     if has_lawn_plan:
                         url_mlp = f"https://user-api-dev-qhw6i22s2q-uc.a.run.app/order?shopify_order_no={order['orderNumber']}"
-                        response_mlp = requests.get(url_mlp)
+                        response_mlp = session.get(url_mlp)
                         data_mlp = response_mlp.json()
                         plan_details = data_mlp.get("plan_details", [])
                         for detail in plan_details:
@@ -79,16 +82,6 @@ def lambda_handler(event, context):
 def isLawnPlan(sku):
     return (sku.startswith('SUB') or sku in ['05000', '10000', '15000']) and sku not in ["SUB - LG - D", "SUB - LG - S", "SUB - LG - G"]
 
-def get_plan_details_from_url_mlp(order_number):
-    url_mlp = f"https://user-api-dev-qhw6i22s2q-uc.a.run.app/order?shopify_order_no={order_number}"
-    response_mlp = requests.get(url_mlp)
-    print("Sending request to:", url_mlp)
-    print("Response status code from MLP API:", response_mlp.status_code)
-    data_mlp = response_mlp.json()
-    plan_details = data_mlp.get("plan_details", [])
-    return plan_details
-
-
 def process_item(item):
     global mlp_data 
     print("Processing individual item")
@@ -118,7 +111,7 @@ def update_order(order):
         "Authorization": f"Basic {encoded_auth_string}"
     }
     try:
-        response = requests.post(url, headers=headers, data=json.dumps(order))
+        response = session.post(url, data=json.dumps(order))
         print(f"Response status code: {response.status_code}")
         print(f"Response content: {response.content}")
     except requests.exceptions.RequestException as e:
