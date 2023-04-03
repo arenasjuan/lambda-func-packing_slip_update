@@ -47,16 +47,20 @@ def lambda_handler(event, context):
 
                     has_lawn_plan = any(isLawnPlan(item["sku"]) for item in order["items"])
                     if has_lawn_plan:
+                        print(f"{order['orderNumber']} has a lawn plan")
                         url_mlp = f"https://user-api-dev-qhw6i22s2q-uc.a.run.app/order?shopify_order_no={order['orderNumber']}"
                         response_mlp = session.get(url_mlp)
                         data_mlp = response_mlp.json()
+                        print(data_mlp)
                         plan_details = data_mlp.get("plan_details", [])
                         for detail in plan_details:
+                            product_list = []
                             for product in detail['products']:
-                                mlp_data[detail['sku']] = {
+                                product_list.append({
                                     'name': product['name'],
                                     'count': product['count']
-                                }
+                                })
+                            mlp_data[detail['sku']] = product_list
                     process_items_and_update_order(order)
                         
                 else:
@@ -83,18 +87,21 @@ def isLawnPlan(sku):
     return (sku.startswith('SUB') or sku in ['05000', '10000', '15000']) and sku not in ["SUB - LG - D", "SUB - LG - S", "SUB - LG - G"]
 
 def process_item(item):
-    global mlp_data 
+    global mlp_data
     print("Processing individual item")
     original_sku = item["sku"]
     if original_sku in SKU_REPLACEMENTS:
         if isLawnPlan(original_sku) and original_sku in mlp_data:
-            product_info = mlp_data[original_sku]
-            item['name'] = SKU_REPLACEMENTS[original_sku] + f"\n\u00A0\u00A0\u00A0\u00A0• {product_info['count']} {product_info['name']}"
+            products_info = mlp_data[original_sku]
+            item['name'] = SKU_REPLACEMENTS[original_sku]
+            for product_info in products_info:
+                item['name'] += f"\n\u00A0\u00A0\u00A0\u00A0• {product_info['count']} {product_info['name']}"
         else:
             replacement_name = SKU_REPLACEMENTS[original_sku]
             item["name"] = replacement_name
 
     print("Finished processing individual item")
+
 
 def process_items_and_update_order(order):
     with ThreadPoolExecutor(max_workers=8) as executor:
