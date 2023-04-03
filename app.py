@@ -42,26 +42,26 @@ def lambda_handler(event, context):
             if order_response.status_code == 200:
                 order_data = order_response.json()
                 if "orders" in order_data:
-                    order = order_data["orders"][0]
-                    print("Processing order")
+                    for order in order_data["orders"]:
+                        print("Processing order")
 
-                    has_lawn_plan = any(isLawnPlan(item["sku"]) for item in order["items"])
-                    if has_lawn_plan:
-                        print(f"{order['orderNumber']} has a lawn plan")
-                        url_mlp = f"https://user-api-dev-qhw6i22s2q-uc.a.run.app/order?shopify_order_no={order['orderNumber']}"
-                        response_mlp = session.get(url_mlp)
-                        data_mlp = response_mlp.json()
-                        print(data_mlp)
-                        plan_details = data_mlp.get("plan_details", [])
-                        for detail in plan_details:
-                            product_list = []
-                            for product in detail['products']:
-                                product_list.append({
-                                    'name': product['name'],
-                                    'count': product['count']
-                                })
-                            mlp_data[detail['sku']] = product_list
-                    process_items_and_update_order(order)
+                        has_lawn_plan = any(isLawnPlan(item["sku"]) for item in order["items"])
+                        if has_lawn_plan:
+                            print(f"{order['orderNumber']} has a lawn plan")
+                            url_mlp = f"https://user-api-dev-qhw6i22s2q-uc.a.run.app/order?shopify_order_no={order['orderNumber']}"
+                            response_mlp = session.get(url_mlp)
+                            data_mlp = response_mlp.json()
+                            print(data_mlp)
+                            plan_details = data_mlp.get("plan_details", [])
+                            for detail in plan_details:
+                                product_list = []
+                                for product in detail['products']:
+                                    product_list.append({
+                                        'name': product['name'],
+                                        'count': product['count']
+                                    })
+                                mlp_data[detail['sku']] = product_list
+                        process_items_and_update_order(order)
                         
                 else:
                     print("No orders key found in order_data")
@@ -79,6 +79,7 @@ def lambda_handler(event, context):
         response["body"] = json.dumps({"error": "No 'resource_url' key found in webhook payload"})
 
     return response
+
 
 
 
