@@ -17,7 +17,6 @@ headers = {
 session = requests.Session()
 session.headers.update(headers)
 
-mlp_data = {}  # Define as a global variable
 
 def lambda_handler(event, context):
     response = {
@@ -43,7 +42,8 @@ def lambda_handler(event, context):
                 order_data = order_response.json()
                 if "orders" in order_data:
                     for order in order_data["orders"]:
-                        print("Processing order")
+                        print(f"Processing order #{order['orderNumber']}")
+                        mlp_data = {}
 
                         has_lawn_plan = any(isLawnPlan(item["sku"]) for item in order["items"])
                         if has_lawn_plan:
@@ -61,7 +61,7 @@ def lambda_handler(event, context):
                                         'count': product['count']
                                     })
                                 mlp_data[detail['sku']] = product_list
-                        process_items_and_update_order(order)
+                        process_items_and_update_order(order, mlp_data)
                         
                 else:
                     print("No orders key found in order_data")
@@ -81,14 +81,10 @@ def lambda_handler(event, context):
     return response
 
 
-
-
-
 def isLawnPlan(sku):
     return (sku.startswith('SUB') or sku in ['05000', '10000', '15000']) and sku not in ["SUB - LG - D", "SUB - LG - S", "SUB - LG - G"]
 
-def process_item(item):
-    global mlp_data
+def process_item(item, mlp_data):
     print("Processing individual item")
     original_sku = item["sku"]
     if original_sku in SKU_REPLACEMENTS:
@@ -104,10 +100,10 @@ def process_item(item):
     print("Finished processing individual item")
 
 
-def process_items_and_update_order(order):
+def process_items_and_update_order(order, mlp_data):
     with ThreadPoolExecutor(max_workers=8) as executor:
         # Process items concurrently
-        executor.map(process_item, order["items"])
+        executor.map(lambda item: process_item(item, mlp_data), order["items"])
     update_order(order)
 
 
